@@ -1,0 +1,15 @@
+{
+  "source_url": "https://github.com/letizialamperti/BT_ordination_eDNA/blob/main/batch_script_BarlowTwins_kfold.sh",
+  "recovered": {
+    "RAW_DIR": "/bettik/PROJECTS/pr-qiepb/lampertl/all",
+    "CONDA_SH": "/applis/environments/conda.sh",
+    "CONDA_ENV": "zioboia",
+    "SEQUENCE_LENGTH": 300
+  },
+  "new_destinations": [
+    "OUTPUT_ROOT",
+    "CACHE_DIR"
+  ],
+  "server_environment_verified": false,
+  "note": "BT launcher subset500; ORDNA retains agreed1000. Fixed training budget remains exploratory."
+}

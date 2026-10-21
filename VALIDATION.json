@@ -2,7 +2,7 @@
   "passed": true,
   "biological_training_run": false,
   "gpu_verified": false,
-  "tests_passed": 4,
+  "tests_passed": 5,
   "validation": "CPU synthetic train/export; exclusions for low/zero valid pairs; effective/original roles; checkpoints last/best; no validation reads during training; excluded IDs absent from export; gradients/permutation invariance; spatial partitions",
   "split_sha256": {
     "index_mpa_merged_3_fold_01.csv": "733f66d865b105c21d56ed2664de1c6b70a5d797a7661e1da389efeda92e3794",
@@ -27,6 +27,8 @@
   "checked_source_sha256": {
     "src/ordna_training/cli.py": "cd877c44d3fa0b72de3fde6012cf8d54b8d43e475e8d7b61b65ad0daf56f028e",
     "src/ordna_training/data.py": "d3318422c59c5a3f22d4cd145545fea9092b15a6f72dfb48117651618febddcb",
-    "scripts/run_fold.sh": "b1702b20aa365c81974a4210315d4edf2fdc8ea1587f0fdc1069f30308a1ea3a"
-  }
+    "scripts/run_fold.sh": "75d9a07e279c1c05d40b4f5d3b1d1805b17569086e3ce11177d43a618ccfc46d"
+  },
+  "oar_script_validation": "Bash syntax and mocked two-stage dispatch, Conda activation, paths with spaces, fold02, CUDA option, checkpoint path, export subset option, stop on training failure; no actual OAR submission",
+  "server_environment": "zioboia selected from BT launcher; not remotely inspected"
 }
