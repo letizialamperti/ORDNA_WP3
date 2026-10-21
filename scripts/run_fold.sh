@@ -1,7 +1,6 @@
 #!/bin/bash
 #OAR -n ordna-single-fold
 #OAR -l /nodes=1/gpu=1,walltime=24:00:00
-#OAR -p gpumodel='A100'
 #OAR --stdout ordna.%jobid%.out
 #OAR --stderr ordna.%jobid%.err
 #OAR --project pr-qiepb
