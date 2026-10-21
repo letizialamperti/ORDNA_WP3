@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ordna-training"
+version = "0.1.0"
+description = "Fold-isolated ORDNA triplet training and embedding export"
+requires-python = ">=3.10"
+dependencies = ["torch>=2.2,<3", "numpy>=1.26,<2", "pandas>=2.2,<3"]
+
+[project.scripts]
+ordna-train = "ordna_training.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

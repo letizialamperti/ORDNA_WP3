@@ -1,0 +1,11 @@
+name: ordna-training
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - torch==2.2.2
+      - numpy==1.26.4
+      - pandas==2.3.3
+      - -e .

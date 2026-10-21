@@ -1,0 +1,32 @@
+{
+  "passed": true,
+  "biological_training_run": false,
+  "gpu_verified": false,
+  "tests_passed": 4,
+  "validation": "CPU synthetic train/export; exclusions for low/zero valid pairs; effective/original roles; checkpoints last/best; no validation reads during training; excluded IDs absent from export; gradients/permutation invariance; spatial partitions",
+  "split_sha256": {
+    "index_mpa_merged_3_fold_01.csv": "733f66d865b105c21d56ed2664de1c6b70a5d797a7661e1da389efeda92e3794",
+    "index_mpa_merged_3_fold_02.csv": "3fbda6598c3034e937369abf2a8242c099a0a39717d8f5a5d68e2b45da5536ba",
+    "index_mpa_merged_3_fold_03.csv": "5d0d49b358788f4533070b93a1827209bb604806a969f45adb978b3875f52c40"
+  },
+  "split_counts": {
+    "index_mpa_merged_3_fold_01.csv": {
+      "train": 290,
+      "validation": 142
+    },
+    "index_mpa_merged_3_fold_02.csv": {
+      "train": 286,
+      "validation": 146
+    },
+    "index_mpa_merged_3_fold_03.csv": {
+      "train": 288,
+      "validation": 144
+    }
+  },
+  "model_sha256": "d5676a52b9801a69a670d4f7653b56ea3def3f0b1b0089618a3cf538fcda15f8",
+  "checked_source_sha256": {
+    "src/ordna_training/cli.py": "cd877c44d3fa0b72de3fde6012cf8d54b8d43e475e8d7b61b65ad0daf56f028e",
+    "src/ordna_training/data.py": "d3318422c59c5a3f22d4cd145545fea9092b15a6f72dfb48117651618febddcb",
+    "scripts/run_fold.sh": "b1702b20aa365c81974a4210315d4edf2fdc8ea1587f0fdc1069f30308a1ea3a"
+  }
+}
