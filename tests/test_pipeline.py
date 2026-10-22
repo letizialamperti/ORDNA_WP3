@@ -1,6 +1,7 @@
 import json
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -73,6 +74,27 @@ class PipelineTests(unittest.TestCase):
                 self.assertEqual(len([c for c in exported if c.startswith('Dim')]),dim)
                 self.assertTrue(np.isfinite(exported.filter(regex='^Dim').to_numpy()).all())
             self.assertTrue(json.loads((root/'export/export_config.json').read_text())['model_frozen'])
+            exported_before=pd.read_csv(root/'export/embeddings_projector_4D.csv')
+            # Completed exports must skip all forwards when resumed.
+            with patch.object(TripletEncoder,'forward',side_effect=AssertionError('Unexpected recomputation')):
+                main(['export',*common,'--checkpoint',str(root/'train/checkpoints/last.pt'),'--output',str(root/'export'),'--resume'])
+            pd.testing.assert_frame_equal(exported_before,pd.read_csv(root/'export/embeddings_projector_4D.csv'))
+            with self.assertRaisesRegex(ValueError,'configuration mismatch'):
+                main(['export',*common,'--checkpoint',str(root/'train/checkpoints/last.pt'),'--output',str(root/'export'),'--resume','--max-subsets','1'])
+            # Simulate interruption on sample two: sample one must be reusable.
+            original_forward=TripletEncoder.forward
+            counter=[0]
+            def interrupted(model,*args,**kwargs):
+                counter[0]+=1
+                if counter[0]==2:raise RuntimeError('simulated interruption')
+                return original_forward(model,*args,**kwargs)
+            partial=['export',*common,'--checkpoint',str(root/'train/checkpoints/last.pt'),'--output',str(root/'partial_export'),'--max-subsets','1','--resume']
+            with patch.object(TripletEncoder,'forward',interrupted):
+                with self.assertRaisesRegex(RuntimeError,'simulated interruption'):main(partial)
+            self.assertEqual(len(list((root/'partial_export/samples').glob('*.json'))),1)
+            main(partial)
+            self.assertEqual(json.loads((root/'partial_export/progress.json').read_text())['state'],'complete')
+            self.assertEqual(len(pd.read_csv(root/'partial_export/embeddings_projector_4D.csv')),3)
             changed=root/'changed.csv'
             pd.DataFrame({'spygen_code':['a','b','v'],'set':['train','validation','train']}).to_csv(changed,index=False)
             with self.assertRaisesRegex(ValueError,'Split differs'):

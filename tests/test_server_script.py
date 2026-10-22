@@ -10,7 +10,7 @@ from pathlib import Path
 
 
 class ServerScriptTests(unittest.TestCase):
-    def test_config_conda_and_two_stage_dispatch(self):
+    def test_separate_training_and_export_dispatch(self):
         root=Path(__file__).resolve().parents[1]
         script=root/'scripts/run_fold.sh'
         subprocess.run(['bash','-n',str(script)],check=True)
@@ -24,15 +24,26 @@ class ServerScriptTests(unittest.TestCase):
             conda.write_text('conda() { printf "%s\\n" "$*" >> "$ACTIVATION"; }\n')
             cfg=work/'server.env'
             settings={'FOLD':'02','RAW_DIR':str(raw),'OUTPUT_ROOT':str(work/'results root'),'CACHE_DIR':str(work/'cache'),'SEQUENCE_LENGTH':'150','STEPS_PER_EPOCH':'2','EPOCHS':'1','CONDA_SH':str(conda),'CONDA_ENV':'ordna-training','PYTHON_BIN':str(mock),'DEVICE':'cuda','SEED':'2','EXPORT_SEED':'0','MAX_EXPORT_SUBSETS':'3'}
+            settings.update(BATCH_SIZE='1',SUBSET_SIZE='1000',EMBEDDING_DIM='64',REPRESENTATION_DIM='256')
             cfg.write_text('\n'.join(k+'='+shlex.quote(v) for k,v in settings.items())+'\n')
             env={**os.environ,'RUN_CONFIG':str(cfg),'CALLS':str(calls),'ACTIVATION':str(activation),'OAR_JOB_ID':'test-job'}
             result=subprocess.run(['bash',str(script)],env=env,cwd=work,capture_output=True,text=True)
             self.assertEqual(result.returncode,0,result.stderr)
             commands=[json.loads(line) for line in calls.read_text().splitlines()]
-            self.assertEqual(len(commands),2)
-            self.assertEqual(commands[0][:3],['-m','ordna_training.cli','train'])
-            self.assertEqual(commands[1][:3],['-m','ordna_training.cli','export'])
+            self.assertEqual(len(commands),1)
+            self.assertEqual(commands[0][:4],['-u','-m','ordna_training.cli','train'])
             self.assertEqual(activation.read_text().strip(),'activate ordna-training')
+            checkpoint=work/'results root/fold_02/training/checkpoints/last.pt'
+            checkpoint.parent.mkdir(parents=True);checkpoint.touch()
+            export_script=root/'scripts/run_embeddings.sh'
+            subprocess.run(['bash','-n',str(export_script)],check=True)
+            result=subprocess.run(['bash',str(export_script)],env=env,cwd=work,capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stderr)
+            commands=[json.loads(line) for line in calls.read_text().splitlines()]
+            self.assertEqual(len(commands),2)
+            self.assertEqual(commands[1][:4],['-u','-m','ordna_training.cli','export'])
+            self.assertIn('--resume',commands[1])
+            self.assertTrue(commands[1][commands[1].index('--output')+1].endswith('/embeddings_resumable'))
             for command in commands:
                 self.assertEqual(command[command.index('--samples-dir')+1],str(raw))
                 self.assertTrue(command[command.index('--split')+1].endswith('_fold_02.csv'))
