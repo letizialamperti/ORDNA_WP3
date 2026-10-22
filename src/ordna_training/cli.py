@@ -97,48 +97,8 @@ def train(args):
 
 
 def export(args):
-    checkpoint=torch.load(args.checkpoint,map_location='cpu',weights_only=True)
-    split=read_split(args.split)
-    if checkpoint['split_sha256']!=sha(args.split):raise ValueError('Split differs from training checkpoint')
-    original_train_ids=split.loc[split['set'].eq('train'),'spygen_code'].tolist()
-    if original_train_ids!=checkpoint.get('original_train_ids',checkpoint['train_ids']):raise ValueError('Training IDs differ from checkpoint')
-    train_ids=checkpoint['train_ids']
-    excluded_ids=checkpoint.get('excluded_train_ids',[])
-    if set(train_ids)&set(excluded_ids) or set(train_ids)|set(excluded_ids)!=set(original_train_ids):
-        raise ValueError('Checkpoint exclusion manifest is inconsistent')
-    split=split.loc[split['set'].eq('validation')|split.spygen_code.isin(train_ids)].copy()
-    files=locate_files(args.samples_dir,split.spygen_code)
-    if args.output.exists():raise ValueError(f'Export output already exists: {args.output}')
-    args.output.mkdir(parents=True)
-    split.to_csv(args.output/'sample_roles.csv',index=False)
-    device=device_for(args.device)
-    model=TripletEncoder(**checkpoint['model_config'])
-    model.load_state_dict(checkpoint['state_dict'],strict=True);model.to(device).eval()
-    size=checkpoint['training_config']['subset_size']
-    outputs=[args.output/f'embeddings_projector_{checkpoint["model_config"]["sample_emb_dim"]}D.csv',args.output/f'embeddings_preprojector_{checkpoint["model_config"]["sample_repr_dim"]}D.csv']
-    rows=[[],[]];qc=[]
-    with torch.inference_mode():
-        for sample,role in split[['spygen_code','set']].itertuples(index=False,name=None):
-            arr,info=tokenize_file(files[sample],args.cache_dir,checkpoint['model_config']['seq_len'])
-            # Per-sample seed: invariant to split row order and unrelated samples.
-            seed=int.from_bytes(hashlib.sha256(f'{args.seed}:{sample}'.encode()).digest()[:8],'little')
-            indices=np.random.default_rng(seed).permutation(len(arr))
-            use=len(arr) if args.max_subsets is None else min(len(arr),size*args.max_subsets)
-            stats=[[],[]]
-            for start in range(0,use,size):
-                batch=np.asarray(arr[indices[start:min(start+size,use)]],dtype='int64')
-                embeddings=model(torch.tensor(batch[None],device=device))
-                for block,value in zip(stats,embeddings):block.append(value[0].cpu().numpy())
-            for block,target in zip(stats,rows):
-                values=np.stack(block)
-                mean=values.mean(0);std=values.std(0,ddof=0)
-                target.append({'Sample':sample,'role':'train' if role=='train' else 'outer_eval',**{f'Dim{i+1}':float(v) for i,v in enumerate(mean)},**{f'Standard_dev_{i+1}':float(v) for i,v in enumerate(std)}})
-            qc.append({'Sample':sample,'role':role,'valid_pairs':len(arr),'used_pairs':use,'subsets':len(stats[0]),'leftover_subset_size':use%size,'discarded_invalid_pairs':info['discarded_pairs'],'source':info['source'],'normalized_valid_pairs_sha256':info['normalized_valid_pairs_sha256']})
-    for target,path in zip(rows,outputs):pd.DataFrame(target).to_csv(path,index=False)
-    pd.DataFrame(qc).to_csv(args.output/'embedding_qc.csv',index=False)
-    export_config={'checkpoint_sha256':sha(args.checkpoint),'split_sha256':sha(args.split),'export_seed':args.seed,'max_subsets':args.max_subsets,'aggregation':'equal subset means including final partial subset; population std ddof0','n_train':len(train_ids),'n_validation':len(split)-len(train_ids),'model_frozen':True,'checkpoint_training_config':checkpoint['training_config']}
-    (args.output/'export_config.json').write_text(json.dumps(export_config,indent=2))
-    print(f'Export complete: {args.output}',flush=True)
+    from .exporting import export_embeddings
+    return export_embeddings(args,sha,device_for)
 
 
 def audit(args):
@@ -161,6 +121,8 @@ def main(argv=None):
         p.add_argument('--seed',type=int,default=0)
         if command=='export':
             p.add_argument('--checkpoint',type=Path,required=True)
+            p.add_argument('--resume',action='store_true',help='Resume only matching export configuration; skip completed samples')
+            p.add_argument('--log-every-subsets',type=int,default=50)
             p.add_argument('--max-subsets',type=int,default=None)
             continue
         p.add_argument('--sequence-length',type=int,required=True)
@@ -176,6 +138,7 @@ def main(argv=None):
         p.add_argument('--margin',type=float,default=.3)
         p.add_argument('--norm-weight',type=float,default=.1)
     args=parser.parse_args(argv)
+    if getattr(args,'log_every_subsets',1)<1:parser.error('--log-every-subsets must be positive')
     if getattr(args,'max_subsets',None) is not None and args.max_subsets<1:parser.error('--max-subsets must be positive')
     {'audit':audit,'train':train,'export':export}[args.command](args)
 
